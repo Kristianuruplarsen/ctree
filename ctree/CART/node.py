@@ -18,6 +18,7 @@ class Node:
 
     def __init__(self, x, y, 
                  criterion,
+                 predictor,
                  min_leaf_size = 5,
                  jit = True
                  ):
@@ -25,8 +26,9 @@ class Node:
         '''
         self.x = x 
         self.y = y
-
+        
         self.criterion = criterion
+        self.predictor = predictor
         self.jit = jit
 
         self.min_leaf_size = min_leaf_size
@@ -52,8 +54,10 @@ class Node:
             return f'Leafnode yhat={self.predict()}'
         return f'Decisionnode x[{self.split_col}]<{round(self.split_value,3)}'
 
+
     def subnodeopts(self, side = 'left'):
         shared = {'criterion': self.criterion,
+                  'predictor': self.predictor,
                   'min_leaf_size': self.min_leaf_size,
                   'jit': self.jit}
 
@@ -89,8 +93,18 @@ class Node:
         ''' Search a row for the best split.
         '''
         if self.jit:
-            return search_row_jit(self.criterion, self.y, row, self.min_leaf_size)
-        return search_row_nojit(self.criterion, self.y, row, self.min_leaf_size)
+            return search_row_jit(criterion = self.criterion, 
+                                  predictor = self.predictor,
+                                  y = self.y, 
+                                  row = row, 
+                                  min_leaf_size = self.min_leaf_size)
+                                  
+        return search_row_nojit(criterion = self.criterion, 
+                                  predictor = self.predictor,
+                                  y = self.y, 
+                                  row = row, 
+                                  min_leaf_size = self.min_leaf_size)
+
 
     def set_split_rule(self):
         '''
@@ -125,9 +139,10 @@ class Node:
         else:
             self.rule = rule
             self.leftidx = rule
-            self.rightidx = ~rule
+            self.rightidx = np.logical_not(rule)
             self.split_col = split_col
             self.split_value = split_value
+
 
     def is_leaf(self):
         ''' Is this node a leaf? '''
@@ -157,4 +172,4 @@ class Node:
 
     def predict(self):
         ''' Mean response within node '''
-        return np.mean(self.y)
+        return self.predictor(self.y)
